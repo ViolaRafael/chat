@@ -52,7 +52,7 @@ class ChatMockService implements ChatService {
       userImageURL: user.imageURL,
     );
     _msgs.add(newMessage);
-    _controller?.add(_msgs);
+    _controller?.add(_msgs.reversed.toList());
     return newMessage;
   }
 }
