@@ -5,6 +5,7 @@ import 'package:chat/core/services/auth/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class AuthFirebaseService implements AuthService {
   static ChatUser? _currentUser;
@@ -24,27 +25,42 @@ class AuthFirebaseService implements AuthService {
     return _userStream;
   }
 
+  @override
   Future<void> signup(
     String name,
     String email,
     String password,
     File? image,
   ) async {
-    final auth = FirebaseAuth.instance;
+    final signup = await Firebase.initializeApp(
+      name: 'userSignup',
+      options: Firebase.app().options,
+    );
+
+    final auth = FirebaseAuth.instanceFor(app: signup);
+
     UserCredential credential = await auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
 
-    if (credential.user == null) return;
+    if (credential.user != null) {
+      // 1
+      final imageName = '${credential.user!.uid}.jpg';
+      final imageURL = await _uploadUserImage(image, imageName);
 
-    final imageName = '${credential.user!.uid}.jpg';
-    final imageURL = await _uploadUserImage(image, imageName);
+      // 2
+      await credential.user?.updateDisplayName(name);
+      await credential.user?.updatePhotoURL(imageURL);
 
-    await credential.user?.updateDisplayName(name);
-    await credential.user?.updatePhotoURL(imageURL);
+      // 2.5
+      await login(email, password);
 
-    await _saveChatUser(_toChatUser(credential.user!, imageURL));
+      // 3
+      _currentUser = _toChatUser(credential.user!, name, imageURL);
+      await _saveChatUser(_currentUser!);
+    }
+    await signup.delete();
   }
 
   Future<void> login(String email, String password) async {
@@ -59,8 +75,8 @@ class AuthFirebaseService implements AuthService {
   }
 
   Future<String?> _uploadUserImage(File? image, String imageName) async {
-    if(image == null) return null;
-    
+    if (image == null) return null;
+
     final storage = FirebaseStorage.instance;
     final imageRef = storage.ref().child('user_images').child(imageName);
     await imageRef.putFile(image).whenComplete(() => {});
@@ -72,16 +88,16 @@ class AuthFirebaseService implements AuthService {
     final docRef = store.collection('users').doc(user.id);
 
     return docRef.set({
-      'name' : user.name,
-      'email' : user.email,
-      'imageURL' : user.imageURL,
+      'name': user.name,
+      'email': user.email,
+      'imageURL': user.imageURL,
     });
   }
 
-  static ChatUser _toChatUser(User user, [String? imageURL]) {
+  static ChatUser _toChatUser(User user, [String? name, String? imageURL]) {
     return ChatUser(
       id: user.uid,
-      name: user.displayName ?? user.email!.split('@')[0],
+      name: name ?? user.displayName ?? user.email!.split('@')[0],
       email: user.email!,
       imageURL: imageURL ?? user.photoURL ?? 'assets/images/avatar.png',
     );
