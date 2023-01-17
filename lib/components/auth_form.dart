@@ -100,7 +100,7 @@ class _AuthFormState extends State<AuthForm> {
               ElevatedButton(
                 onPressed: _submit,
                 child: Text(
-                  _formData.isLogin ? 'Entrar' : 'Cadastrar',
+                  _formData.isLogin ? 'Entrar' : 'Criar conta',
                 ),
               ),
               TextButton(

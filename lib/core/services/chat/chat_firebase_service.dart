@@ -21,16 +21,6 @@ class ChatFirebaseService implements ChatService {
         return doc.data();
       }).toList();
     });
-
-    ///versão mais explicita do codigo acima
-    // return Stream<List<ChatMessage>>.multi((controller) {
-    //   snapshots.listen((snapshot) {
-    //     List<ChatMessage> list = snapshot.docs.map((doc) {
-    //       return doc.data();
-    //     }).toList();
-    //       controller.add(list);
-    //   });
-    // });
   }
 
   Future<ChatMessage?> save(String text, ChatUser user) async {
